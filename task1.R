@@ -14,7 +14,6 @@ fix_data <-function (data){
   data.frame(lapply(data,function(x) fix_number(x)))
 }
 
-setwd(paste0(getwd(), "/data"))
-data <- read.csv("lab1_e1.csv")
+data <- read.csv("D:/studyr/data/lab1_e1.csv")
 data<-fix_data(data)
 str(data)
