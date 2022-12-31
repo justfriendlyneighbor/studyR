@@ -1,0 +1,130 @@
+---
+title: "3 lab R"
+author: "Звездин Антон"
+output: html_notebook
+---
+
+```{r setup, include=FALSE}
+library(knitr)
+```
+
+Задание 1. 7. *ExpImp.Rdata* Приведите данные к формату tidydata. Отобразите суммарные значения экспорта и импорта по субъектам федерации, находящимся в Центральном федеральном округе, в виде столбчатой диаграммы [сгруппировав значения по названию субъекта федерации]. Экспорт и импорт обозначьте разными цветами. Сделайте второй график, наложив столбцы экспорта и импорта один на другой и подписав значения разниц между экспортом и ипортом.
+
+First task usage code with print:
+
+```{r warning = FALSE}
+library(stringr)
+library(dplyr)
+library(tidyr)
+library(ggplot2)
+
+cond <- 'Compare'
+REGION <- 'Центральный федеральный округ'
+
+plot_graphics <- function(data, str){
+  data <- data[complete.cases(data),]
+  for (i in 2:length(names(data))) {
+    data[[i]] <- gsub("-", 0, data[[i]])
+    data[[i]] <- as.numeric(data[[i]])
+  }
+
+  flt <- str_detect(data$Регион, 'федеральный округ')
+  rdf <- mutate(data, Округ = if_else(flt, Регион, NULL))
+  rdf <- fill(rdf, Округ)
+  flt2 <- !str_detect(rdf$Регион, 'Федерация|федеральный округ|г.')
+  rdf <- filter(rdf, flt2)
+
+  match_exp <- select_at(rdf, vars(matches("Экспорт")))
+  match_imp <- select_at(rdf, vars(matches("Импорт")))
+
+  match_dif <- rowSums(match_imp, na.rm = TRUE)-rowSums(match_exp, na.rm = TRUE)
+  match_exp$Сумма <- rowSums(match_exp, na.rm = TRUE)
+  match_imp$Сумма <- rowSums(match_imp, na.rm = TRUE)
+
+  if (str == cond){
+    rdf$SumExport <- match_exp$Сумма
+    rdf$SumImport <- match_imp$Сумма
+    rdf$Diff <- match_dif
+    rdf <- rdf[,c("Регион", "SumExport", "SumImport","Diff","Округ" )]
+  }else{
+    rdf$Sum <- match_imp$Сумма+match_exp$Сумма
+    rdf <- rdf[,c("Регион", "Sum","Округ" )]
+  }
+
+  rdf <- filter(rdf, Округ == REGION)%>%mutate(Округ=NULL)
+  rdf <- rdf%>%pivot_longer( starts_with("Sum"), names_to = "Экспорт/Импорт", values_to = "млн долларов США")
+  sum_reg <- rdf %>% group_by(Регион, `Экспорт/Импорт`)
+  sum_reg <- sum_reg %>% summarise(sum = sum(`млн долларов США`))
+  sum_reg |>
+    ggplot(mapping = aes(x = Регион, y = sum, fill = `Экспорт/Импорт`)) +
+    geom_col(color = 'black', size = 0.2, position = 'identity',alpha=0.7) +
+    {if (str == cond) ggtitle(paste(REGION," (разница между импортом и экспортом)")) else ggtitle(REGION)}+
+    ylab('млн долларов США') + coord_flip()+
+    {if (str == cond) geom_text(aes(y=20000, label = rdf$Diff))}
+}
+
+load('D:/studyr/data/ExpImp.RData')
+plot_graphics(ExpImp, paste('Non',cond))
+plot_graphics(ExpImp, cond)
+```
+
+Задание 2. 12. *data2.csv, data1.txt* Объедините data.frames по идентификаторам сортов. Исключите те сорта, для которых есть пропущенные значения. Для всех количественных величин нарисовать гистограммы и плотности распределения (на одном рисунке). Выбрать одну количественную и две качественные переменные . Нарисовать столбчатую диаграмму в которой значениям на оси x соответствуют значения одной кач.переменной и значения другой кач. переменной показаны при помощи цвета. Для количественной переменной нарисовать график плотности и гистограмму(в 2 слоя) на одном графике, и boxplot - на другом.
+
+Second task usage code with print:
+
+```{r warning = FALSE}
+data_1 <- read.table("D:/studyr/data/data1.txt", header = TRUE, sep = " ")
+data_1 <- data.frame(t(data_1))
+colnames(data_1) <- data_1[1, ]
+data_1 <- data_1[- 1, ]
+rownames(data_1) <- data_1[,1]
+data_1 <- data_1[,-1]
+
+data_2 <- read.csv("D:/studyr/data/data2.csv")
+tmp_names <- data_2$X
+data_2[[1]] <- NULL
+rownames(data_2) <- tmp_names
+
+total_data <- t(rbind(data_1, data_2))
+total_data <- data.frame(total_data[complete.cases(total_data), ])
+total_data <- mutate_all(total_data, function(x) as.numeric(as.character(x)))
+
+ggplot(total_data, aes(x=total_data$Height)) +
+  geom_histogram(aes(y=..density..),fill = "yellowgreen",color = "black")+
+  geom_density(alpha=0.5,fill="blue")+
+  xlab("Value") +
+  ylab("Density")+
+  ggtitle("Height")
+
+ggplot(total_data, aes(x=total_data$Protein)) +
+  geom_histogram(aes(y=..density..),fill = "yellowgreen",color = "black")+
+  geom_density(alpha=0.5,fill="blue")+
+  xlab("Value") +
+  ylab("Density")+
+  ggtitle("Protein")
+
+ggplot(total_data, aes(x=total_data$Oil)) +
+  geom_histogram(aes(y=..density..),fill = "yellowgreen",color = "black")+
+  geom_density(alpha=0.5,fill="blue")+
+  xlab("Value") +
+  ylab("Density")+
+  ggtitle("Oil")
+
+total_data$GrowthType<-as.factor(total_data$GrowthType)
+ggplot(total_data, aes(x=Polegaemost,fill=GrowthType)) +
+  geom_bar()
+
+
+gd1 <-  ggplot(total_data, aes(x=total_data$GenmBMatur)) +
+  geom_histogram(aes(y=..density..),fill = "yellowgreen",color = "black")+
+  geom_density(alpha=0.5,fill="blue")+
+  xlab("Value") +
+  ylab("Density")+
+  ggtitle("GenmBMatur")+
+  labs(caption = "Hist+density")
+gd2 <- ggplot(total_data, aes(x=total_data$GenmBMatur))+
+    geom_boxplot(fill="#f68060", alpha=.6)+
+    labs(caption = "Boxplot")
+
+gridExtra::grid.arrange(gd1, gd2, nrow = 1)
+```

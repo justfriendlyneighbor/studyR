@@ -1,0 +1,92 @@
+---
+title: "2 lab R"
+author: "Звездин Антон"
+output: html_notebook
+---
+```{r setup, include=FALSE}
+library(knitr)
+```
+
+Задание 1.
+7. Используйте файл ExpImp.Rdata
+Напишите функцию, которая по названию субъекта федерации выводит значения суммарного экспорта и суммарного импорта по этому субъекту федерации, а также федеральный округ, к которому этот субъект федерации относится.
+
+First task usage code with print:
+```{r warning = FALSE}
+load("D:/studyr/data/ExpImp.RData")
+# first task
+
+REGION_DELIMITER <- "федеральный"
+MISC <- c("Российская Федерация", "в том числе")
+EMPTY_CELL_MARKER <- "-"
+EMPTY_CELL_PLACEHOLDER <- 0
+
+fix_data <- function(df) {
+  change <- function(x) {
+    vec <- as.numeric(gsub("-", "0", x))
+    ifelse(is.na(vec), x, vec)
+  }
+  data.frame(lapply(df, change))
+}
+
+get_regions_df <- function(data) {
+  for (i in 2:length(names(data))) {
+    data[[i]] <- gsub(EMPTY_CELL_MARKER, EMPTY_CELL_PLACEHOLDER, data[[i]])
+    data[[i]] <- as.numeric(data[[i]])
+  }
+  regions <- data.frame('', '')
+  tmp_index <- 0
+  tmp_region <- ""
+  for (subject in data$'Регион') {
+    tmp_index <- tmp_index + 1
+    if (subject %in% MISC)
+      next
+    if (grepl(REGION_DELIMITER, subject)) {
+      tmp_region <- subject
+      next
+    }
+    tmp_df <- data.frame()
+    tmp_df <- rbind(tmp_df, tmp_region)
+    tmp_df <- rbind(tmp_df, sum(data[tmp_index, 2:length(names(data))]))
+    names(tmp_df) <- subject
+    regions <- cbind(regions, tmp_df)
+  }
+  return(regions)
+}
+
+
+get_region_info <- function(subject, regions_df) {
+  column <- regions_df[[subject]]
+  if (length(column) == 0) {
+    print("Введено неверное название субъекта")
+  }
+  else {
+    print(paste("Выбранный регион: ", subject))
+    print(paste("Принадлежит округу: ", column[[1]]))
+    print(paste("Суммарный импорт и экспорт: ", column[[2]]))
+  }
+}
+
+get_region_info('Архангельская область', get_regions_df(ExpImp))
+```
+
+Задание 2.
+22. Используйте файл Payment_and_value_of_Care-Hospital.csv
+Напишите функцию, которая на вход принимает название города и название медицинской процедуры/заболевания. На выход функция должна выдавать список из трех больниц, в которых средняя стоимость указанной услуги является наименьшей по городу, по округу и по штату. Для каждой больницы должна быть указана максимальная и минимальная стоимость услуги.
+
+Second task usage code with print:
+```{r warning = FALSE}
+get_named_dataframe <- function(df, city, measure_name,name) {
+    county<-subset(df, df$City == city & df$Payment.Measure.Name == paste("Payment for", measure_name, "patients"))[name][[1]][1]
+    tmp_df <- subset(df, df[[name]] == county & df$Payment.Measure.Name == paste("Payment for", measure_name, "patients"))
+    tmp_df$Payment <- as.numeric(gsub(",", "", substr(tmp_df$Payment, start = 2, stop = nchar(tmp_df$Payment))))
+    tmp_df <-tmp_df[order(tmp_df$Payment),]
+    return(tmp_df[c(2,14,15)])
+}
+
+get_named_list<-function(df, city, measure_name){
+  return(list(head(get_named_dataframe(df, city, measure_name,"City"),1),head(get_named_dataframe(df, city, measure_name,"County.Name"),1),head(get_named_dataframe(df, city, measure_name,"State"),1)))
+}
+df <- read.csv("D:/studyr/data/Payment_and_Value_of_Care-Hospital.csv",sep = ";")
+print(get_named_list(df, "LOS ANGELES", "pneumonia"))
+```
