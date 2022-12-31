@@ -13,6 +13,7 @@
         <entry key="file://$PROJECT_DIR$/lab1/lab1.rmd">
           <value>
             <RMarkdownRenderProfile>
+              <option name="lastOutput" value="$PROJECT_DIR$/lab1/lab1.nb.html" />
               <option name="outputDirectoryUrl" value="file://$PROJECT_DIR$/lab1" />
             </RMarkdownRenderProfile>
           </value>
